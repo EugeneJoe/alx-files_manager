@@ -6,51 +6,45 @@ import dbClient from './utils/db';
 
 const fileQueue = new Queue('fileQueue', 'redis://127.0.0.1:6379');
 
-fileQueue.process(async function (job, done) {
-    console.log('Processing...');
-    const fileId = job.data.fileId;
-    if (!fileId) {
-	done(new Error('Missing fileId'));
-    }
+async function thumbNail(width, localPath) {
+  const thumbnail = await imageThumbnail(localPath, { width });
+  return thumbnail;
+}
 
-    const userId = job.data.userId
-    if (!userId) {
-	done(new Error('Missing userId'));
-    }
+fileQueue.process(async (job, done) => {
+  console.log('Processing...');
+  const { fileId } = job.data;
+  if (!fileId) {
+    done(new Error('Missing fileId'));
+  }
 
-    console.log(fileId, userId);
-    const files = dbClient.db.collection('files');
-    const idObject = new ObjectID(fileId);
-    files.findOne({_id: idObject}, async (err, file) => {
-	if (!file) {
-	    console.log('Not found');
-	    done(new Error('File not found'));
-	} else {
-	    const filename = file.localPath;
-	    try {
-		let imageFile = await fs.readFile(filename, 'ascii');
-		const buff = Buffer.from(imageFile, 'ascii');
-		imageFile = buff.toString('base64');
-		const thumbnail_500 = await imageThumbnail(imageFile, {width: 500});
-		const thumbnail_250 = await imageThumbnail(imageFile, {width: 250});
-		const thumbnail_100 = await imageThumbnail(imageFile, {width: 100});
-	    } catch (error) {
-		console.log('thmbnail', error);
-		done(error);
-	    }
-	    console.log('Writing files to system');
-	    try {
-		const image_500 = `${file.localPath}_500`;
-		const image_250 = `${file.localPath}_250`;
-		const image_100 = `${file.localPath}_100`;
-		await fs.writeFile(image_500, thumbnail_500);
-		await fs.writeFile(image_250, thumbnail_250);
-		await fs.writeFile(image_100, thumbnail_100);
-	    } catch (error) {
-		console.log('file', error);
-		done(error);
-	    }
-	    done();
-	}
-    });
+  const { userId } = job.data;
+  if (!userId) {
+    done(new Error('Missing userId'));
+  }
+
+  console.log(fileId, userId);
+  const files = dbClient.db.collection('files');
+  const idObject = new ObjectID(fileId);
+  files.findOne({ _id: idObject }, async (err, file) => {
+    if (!file) {
+      console.log('Not found');
+      done(new Error('File not found'));
+    } else {
+      const fileName = file.localPath;
+      const thumbnail500 = await thumbNail(500, fileName);
+      const thumbnail250 = await thumbNail(250, fileName);
+      const thumbnail100 = await thumbNail(100, fileName);
+
+      console.log('Writing files to system');
+      const image500 = `${file.localPath}_500`;
+      const image250 = `${file.localPath}_250`;
+      const image100 = `${file.localPath}_100`;
+
+      await fs.writeFile(image500, thumbnail500);
+      await fs.writeFile(image250, thumbnail250);
+      await fs.writeFile(image100, thumbnail100);
+      done();
+    }
+  });
 });
