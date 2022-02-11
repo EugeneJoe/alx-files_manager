@@ -32,9 +32,9 @@ class UsersController {
             password: hashedPassword,
           },
         ).then((result) => {
-	  response.status(201).json({ id: result.insertedId, email });
-	  userQueue.add({ userId: result.insertedId });
-	}).catch((error) => console.log(error));
+          response.status(201).json({ id: result.insertedId, email });
+          userQueue.add({ userId: result.insertedId });
+        }).catch((error) => console.log(error));
       }
     });
   }
