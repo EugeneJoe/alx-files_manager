@@ -86,7 +86,7 @@ class FilesController {
         } catch (error) {
         // pass. Error raised when file already exists
         }
-          await fs.writeFile(fileName, buff, 'utf-8');
+        await fs.writeFile(fileName, buff, 'utf-8');
       } catch (error) {
         console.log(error);
       }
