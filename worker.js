@@ -5,6 +5,7 @@ import { ObjectID } from 'mongodb';
 import dbClient from './utils/db';
 
 const fileQueue = new Queue('fileQueue', 'redis://127.0.0.1:6379');
+const userQueue = new Queue('userQueue', 'redis://127.0.0.1:6379');
 
 async function thumbNail(width, localPath) {
   const thumbnail = await imageThumbnail(localPath, { width });
@@ -47,4 +48,17 @@ fileQueue.process(async (job, done) => {
       done();
     }
   });
+});
+
+userQueue.process(async (job, done) => {
+  const { userId } = job.data;
+  if (!userId) done(new Error('Missing userId'));
+  const users = dbClient.db.collection('users');
+  const idObject = new ObjectID(userId);
+  const user = await users.findOne({ _id: idObject });
+  if (user) {
+    console.log(`Welcome ${user.email}!`);
+  } else {
+    done(new Error('User not found'));
+  }
 });
